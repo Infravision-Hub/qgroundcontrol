@@ -408,15 +408,11 @@ void QmlObjectTreeModel::clear()
         return;
     }
 
-    if (_resetModelNestingCount == 0) {
-        beginResetModel();
-    }
+    beginResetModel();
     _disconnectSubtree(&_rootNode);
     _deleteSubtree(&_rootNode, false);
     _totalCount = 0;
-    if (_resetModelNestingCount == 0) {
-        endResetModel();
-    }
+    endResetModel();
 }
 
 void QmlObjectTreeModel::clearAndDeleteContents()
