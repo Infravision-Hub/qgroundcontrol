@@ -539,15 +539,7 @@ void MissionController::_insertComplexMissionItemWorker(const QGeoCoordinate& ma
 
 int MissionController::visualItemIndexForObject(QObject* object) const
 {
-    if (!_visualItems || !object) {
-        return -1;
-    }
-    for (int i = 0; i < _visualItems->count(); i++) {
-        if (_visualItems->get(i) == object) {
-            return i;
-        }
-    }
-    return -1;
+    return _visualItems ? _visualItems->indexOf(object) : -1;
 }
 
 void MissionController::removeVisualItem(int viIndex)
@@ -1797,8 +1789,6 @@ void MissionController::_recalcSequence(void)
 // This will update the child item hierarchy
 void MissionController::_recalcChildItems(void)
 {
-    _visualItems->beginResetModel();
-
     VisualMissionItem* currentParentItem = qobject_cast<VisualMissionItem*>(_visualItems->get(0));
 
     currentParentItem->childItems()->clear();
@@ -1821,8 +1811,6 @@ void MissionController::_recalcChildItems(void)
             }
         }
     }
-
-    _visualItems->endResetModel();
 }
 
 void MissionController::_setupTreeModel(void)
@@ -1853,18 +1841,6 @@ void MissionController::_setupTreeModel(void)
     // Marker child for the rally header / instructions
     _rallyHeaderMarker.setObjectName(QStringLiteral("rallyHeader"));
     _visualItemsTree.appendItem(&_rallyHeaderMarker, _rallyGroupIndex, QStringLiteral("rallyHeader"));
-
-    // Connect rally controller for incremental updates
-    auto* rallyController = _masterController->rallyPointController();
-    if (rallyController) {
-        auto* pts = rallyController->points();
-        connect(pts, &QAbstractItemModel::rowsInserted, this, &MissionController::_onRallyPointsInserted);
-        connect(pts, &QAbstractItemModel::rowsAboutToBeRemoved, this, &MissionController::_onRallyPointsRemoved);
-        connect(pts, &QAbstractItemModel::modelReset, this, &MissionController::_onRallyPointsReset);
-
-        // Populate any existing rally points
-        _onRallyPointsReset();
-    }
 }
 
 //-----------------------------------------------------------------------------
@@ -2037,6 +2013,18 @@ void MissionController::_initAllVisualItems(void)
     // Populate tree's mission group from current _visualItems
     _onMissionItemsReset();
 
+    // Connect rally controller for incremental tree model sync
+    auto* rallyController = _masterController->rallyPointController();
+    if (rallyController) {
+        auto* pts = rallyController->points();
+        connect(pts, &QAbstractItemModel::rowsInserted, this, &MissionController::_onRallyPointsInserted);
+        connect(pts, &QAbstractItemModel::rowsAboutToBeRemoved, this, &MissionController::_onRallyPointsRemoved);
+        connect(pts, &QAbstractItemModel::modelReset, this, &MissionController::_onRallyPointsReset);
+
+        // Populate any existing rally points
+        _onRallyPointsReset();
+    }
+
     emit visualItemsChanged();
     emit containsItemsChanged();
     emit plannedHomePositionChanged(plannedHomePosition());
@@ -2064,6 +2052,15 @@ void MissionController::_deinitAllVisualItems(void)
     disconnect(_visualItems, &QAbstractItemModel::rowsInserted, this, &MissionController::_onMissionItemsInserted);
     disconnect(_visualItems, &QAbstractItemModel::rowsAboutToBeRemoved, this, &MissionController::_onMissionItemsRemoved);
     disconnect(_visualItems, &QAbstractItemModel::modelReset, this, &MissionController::_onMissionItemsReset);
+
+    // Disconnect rally controller tree model sync
+    auto* rallyController = _masterController->rallyPointController();
+    if (rallyController) {
+        auto* pts = rallyController->points();
+        disconnect(pts, &QAbstractItemModel::rowsInserted, this, &MissionController::_onRallyPointsInserted);
+        disconnect(pts, &QAbstractItemModel::rowsAboutToBeRemoved, this, &MissionController::_onRallyPointsRemoved);
+        disconnect(pts, &QAbstractItemModel::modelReset, this, &MissionController::_onRallyPointsReset);
+    }
 }
 
 void MissionController::_initVisualItem(VisualMissionItem* visualItem)

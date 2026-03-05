@@ -30,13 +30,10 @@ TreeView {
 
     QGCPalette { id: qgcPal; colorGroupEnabled: enabled }
 
-    Component.onCompleted: {
-        // Scroll indicators
-        var c = Qt.createComponent("QGCFlickableScrollIndicator.qml")
-        c.createObject(root, { orientation: QGCFlickableScrollIndicator.Horizontal })
-        c = Qt.createComponent("QGCFlickableScrollIndicator.qml")
-        c.createObject(root, { orientation: QGCFlickableScrollIndicator.Vertical })
+    QGCFlickableScrollIndicator { parent: root; orientation: QGCFlickableScrollIndicator.Horizontal }
+    QGCFlickableScrollIndicator { parent: root; orientation: QGCFlickableScrollIndicator.Vertical }
 
+    Component.onCompleted: {
         // Expand only Mission Items by default
         root.expand(0)
     }

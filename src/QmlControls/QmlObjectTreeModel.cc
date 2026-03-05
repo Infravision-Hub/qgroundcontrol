@@ -167,6 +167,18 @@ bool QmlObjectTreeModel::setData(const QModelIndex& index, const QVariant& value
     return true;
 }
 
+bool QmlObjectTreeModel::insertRows(int /*row*/, int /*count*/, const QModelIndex& /*parent*/)
+{
+    qCWarning(QmlObjectTreeModelLog) << "insertRows() not supported — use insertItem()";
+    return false;
+}
+
+bool QmlObjectTreeModel::removeRows(int /*row*/, int /*count*/, const QModelIndex& /*parent*/)
+{
+    qCWarning(QmlObjectTreeModelLog) << "removeRows() not supported — use removeItem()";
+    return false;
+}
+
 QHash<int, QByteArray> QmlObjectTreeModel::roleNames() const
 {
     auto roles = ObjectItemModelBase::roleNames();
@@ -180,7 +192,7 @@ QHash<int, QByteArray> QmlObjectTreeModel::roleNames() const
 
 int QmlObjectTreeModel::count() const
 {
-    return _subtreeCount(&_rootNode);
+    return _totalCount;
 }
 
 void QmlObjectTreeModel::setDirty(bool dirty)
@@ -258,6 +270,7 @@ QModelIndex QmlObjectTreeModel::insertItem(int row, QObject* object, const QMode
         _signalCountChangedIfNotNested();
     }
 
+    _totalCount++;
     setDirty(true);
 
     return createIndex(row, 0, node);
@@ -293,6 +306,9 @@ QObject* QmlObjectTreeModel::removeItem(const QModelIndex& index)
 
     _disconnectSubtree(node);
 
+    // Count the subtree nodes being removed (the node itself + all descendants)
+    const int removedCount = 1 + _subtreeCount(node);
+
     beginRemoveRows(parentIdx, row, row);
     parentNode->children.removeAt(row);
     endRemoveRows();
@@ -301,6 +317,7 @@ QObject* QmlObjectTreeModel::removeItem(const QModelIndex& index)
     _deleteSubtree(node, false);
     delete node;
 
+    _totalCount -= removedCount;
     _signalCountChangedIfNotNested();
     setDirty(true);
 
@@ -358,10 +375,16 @@ void QmlObjectTreeModel::removeChildren(const QModelIndex& parentIndex)
         return;
     }
 
-    const int count = parentNode->children.count();
+    const int childCount = parentNode->children.count();
+
+    // Count all nodes being removed (direct children + their subtrees)
+    int removedCount = childCount;
+    for (const TreeNode* child : parentNode->children) {
+        removedCount += _subtreeCount(child);
+    }
 
     if (_resetModelNestingCount == 0) {
-        beginRemoveRows(parentIndex, 0, count - 1);
+        beginRemoveRows(parentIndex, 0, childCount - 1);
     }
 
     for (TreeNode* child : parentNode->children) {
@@ -370,6 +393,8 @@ void QmlObjectTreeModel::removeChildren(const QModelIndex& parentIndex)
         delete child;
     }
     parentNode->children.clear();
+
+    _totalCount -= removedCount;
 
     if (_resetModelNestingCount == 0) {
         endRemoveRows();
@@ -388,6 +413,7 @@ void QmlObjectTreeModel::clear()
     }
     _disconnectSubtree(&_rootNode);
     _deleteSubtree(&_rootNode, false);
+    _totalCount = 0;
     if (_resetModelNestingCount == 0) {
         endResetModel();
     }
@@ -402,6 +428,7 @@ void QmlObjectTreeModel::clearAndDeleteContents()
     beginResetModel();
     _disconnectSubtree(&_rootNode);
     _deleteSubtree(&_rootNode, true);
+    _totalCount = 0;
     endResetModel();
 }
 
@@ -444,7 +471,7 @@ QmlObjectTreeModel::TreeNode* QmlObjectTreeModel::_findNode(const TreeNode* root
     return nullptr;
 }
 
-int QmlObjectTreeModel::_subtreeCount(const TreeNode* node) const
+int QmlObjectTreeModel::_subtreeCount(const TreeNode* node)
 {
     int result = node->children.count();
     for (const TreeNode* child : node->children) {

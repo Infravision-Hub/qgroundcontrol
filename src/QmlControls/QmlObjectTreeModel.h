@@ -45,6 +45,8 @@ public:
     bool hasChildren(const QModelIndex& parent = QModelIndex()) const override;
     QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
     bool setData(const QModelIndex& index, const QVariant& value, int role = Qt::EditRole) override;
+    bool insertRows(int row, int count, const QModelIndex& parent = QModelIndex()) override;
+    bool removeRows(int row, int count, const QModelIndex& parent = QModelIndex()) override;
     QHash<int, QByteArray> roleNames() const override;
 
     // -- QML-accessible tree operations --
@@ -105,13 +107,14 @@ private:
     TreeNode*   _nodeFromIndex(const QModelIndex& index) const;
     QModelIndex _indexForNode(const TreeNode* node) const;
     TreeNode*   _findNode(const TreeNode* root, const QObject* object) const;
-    int         _subtreeCount(const TreeNode* node) const;
+    static int  _subtreeCount(const TreeNode* node);
     void        _disconnectSubtree(TreeNode* node);
     void        _deleteSubtree(TreeNode* node, bool deleteObjects);
     void        _connectDirtyChanged(QObject* object);
     void        _disconnectDirtyChanged(QObject* object);
 
     TreeNode _rootNode; ///< Invisible root; top-level items are its children
+    int      _totalCount = 0; ///< Cached total node count (all nodes in tree)
 
     static constexpr int NodeTypeRole = Qt::UserRole + 2;
 };
