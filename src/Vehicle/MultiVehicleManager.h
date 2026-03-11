@@ -19,12 +19,12 @@ class MultiVehicleManager : public QObject
     Q_MOC_INCLUDE("QmlObjectListModel.h")
     Q_MOC_INCLUDE("LinkInterface.h")
     Q_MOC_INCLUDE("Vehicle.h")
-    Q_PROPERTY(bool                 activeVehicleAvailable          READ _getActiveVehicleAvailable                                         NOTIFY activeVehicleAvailableChanged)
-    Q_PROPERTY(bool                 parameterReadyVehicleAvailable  READ _getParameterReadyVehicleAvailable                                 NOTIFY parameterReadyVehicleAvailableChanged)
+    Q_PROPERTY(bool                activeVehicleAvailable          READ _getActiveVehicleAvailable                                 NOTIFY activeVehicleAvailableChanged)
+    Q_PROPERTY(bool                parameterReadyVehicleAvailable  READ _getParameterReadyVehicleAvailable                         NOTIFY parameterReadyVehicleAvailableChanged)
     Q_PROPERTY(Vehicle              *activeVehicle                  READ activeVehicle                      WRITE setActiveVehicle          NOTIFY activeVehicleChanged)
-    Q_PROPERTY(QmlObjectListModel   *vehicles                       READ vehicles                                                           CONSTANT)
-    Q_PROPERTY(QmlObjectListModel   *selectedVehicles               READ selectedVehicles                                                   CONSTANT)
-    Q_PROPERTY(Vehicle              *offlineEditingVehicle          READ offlineEditingVehicle                                              CONSTANT)
+    Q_PROPERTY(QmlObjectListModel   *vehicles                       READ vehicles                                                                   CONSTANT)
+    Q_PROPERTY(QmlObjectListModel   *selectedVehicles               READ selectedVehicles                                                           CONSTANT)
+    Q_PROPERTY(Vehicle              *offlineEditingVehicle          READ offlineEditingVehicle                                                      CONSTANT)
 
 public:
     explicit MultiVehicleManager(QObject *parent = nullptr);
@@ -58,6 +58,7 @@ private slots:
     void _vehicleParametersReadyChanged(bool parametersReady);
     void _sendGCSHeartbeat();
     void _vehicleHeartbeatInfo(LinkInterface *link, int vehicleId, int componentId, int vehicleFirmwareType, int vehicleType);
+    void _sendGCSRcOverrideKeepalive(); /// Send RC Override keepalive to isolate failsafe on a specific channel in Software Crash Detection mode.
 
 private:
     bool _vehicleExists(int vehicleId);
@@ -69,6 +70,8 @@ private:
     void _setParameterReadyVehicleAvailable(bool parametersReady);
 
     QTimer *_gcsHeartbeatTimer = nullptr;           ///< Timer to emit heartbeats
+    QTimer *_gcsRcKeepaliveTimer = nullptr;         ///< Timer for RC Override Keepalive
+    bool    _rcKeepaliveFlip = false;               ///< Toggle for RC Keepalive PWM
     QmlObjectListModel *_vehicles = nullptr;
     QmlObjectListModel *_selectedVehicles = nullptr;
     Vehicle *_offlineEditingVehicle = nullptr;      ///< Disconnected vechicle used for offline editing
@@ -79,4 +82,5 @@ private:
     bool _initialized = false;
 
     static constexpr int kGCSHeartbeatRateMSecs = 1000;  ///< Heartbeat rate
+    static constexpr int kGCSRcKeepaliveRateMSecs = 500; // 2 Hz
 };

@@ -62,6 +62,12 @@ void MultiVehicleManager::init()
     (void) connect(_gcsHeartbeatTimer, &QTimer::timeout, this, &MultiVehicleManager::_sendGCSHeartbeat);
     _gcsHeartbeatTimer->start();
 
+    _gcsRcKeepaliveTimer = new QTimer(this);
+    _gcsRcKeepaliveTimer->setInterval(kGCSRcKeepaliveRateMSecs);
+    _gcsRcKeepaliveTimer->setSingleShot(false);
+    (void) connect(_gcsRcKeepaliveTimer, &QTimer::timeout, this, &MultiVehicleManager::_sendGCSRcOverrideKeepalive);
+    _gcsRcKeepaliveTimer->start();
+
     _initialized = true;
 }
 
@@ -371,5 +377,61 @@ void MultiVehicleManager::_setParameterReadyVehicleAvailable(bool parametersRead
     if (parametersReady != _parameterReadyVehicleAvailable) {
         _parameterReadyVehicleAvailable = parametersReady;
         parameterReadyVehicleAvailableChanged(parametersReady);
+    }
+}
+
+// Custom RC Override Keepalive Failsafe (Channel 12)
+void MultiVehicleManager::_sendGCSRcOverrideKeepalive()
+{
+    // 1. Only send if the GCS is configured to emit a heartbeat
+    if (!SettingsManager::instance()->mavlinkSettings()->sendGCSHeartbeat()->rawValue().toBool()) {
+        return;
+    }
+
+    // 2. Only target the active vehicle to prevent multi-vehicle broadcast storms
+    Vehicle* v = activeVehicle();
+    if (!v) {
+        return;
+    }
+
+    // 3. Flip-flop the PWM value for Channel 12
+    const uint16_t pwm = _rcKeepaliveFlip ? 1900 : 1100;
+    _rcKeepaliveFlip = !_rcKeepaliveFlip;
+
+    // 4. ArduPilot semantic: 65535 means "do not change this channel"
+    constexpr uint16_t IGNORE_CHAN = UINT16_MAX;
+
+    const auto links = LinkManager::instance()->links();
+    for (const SharedLinkInterfacePtr& link : links) {
+        if (!link->isConnected()) {
+            continue;
+        }
+
+        if (link->linkConfiguration() && link->linkConfiguration()->isHighLatency()) {
+            continue; // Don't spam high-latency (e.g., Iridium) links
+        }
+
+        mavlink_message_t msg{};
+
+        // Pack the message. Notice only chan12_raw gets the PWM value now.
+        mavlink_msg_rc_channels_override_pack_chan(
+            MAVLinkProtocol::instance()->getSystemId(),
+            MAVLinkProtocol::instance()->getComponentId(),
+            link->mavlinkChannel(),
+            &msg,
+            static_cast<uint8_t>(v->id()), // target_system
+            0,                             // target_component (0 = broadcast to all components)
+            IGNORE_CHAN, IGNORE_CHAN, IGNORE_CHAN, IGNORE_CHAN, // Ch 1-4
+            IGNORE_CHAN, IGNORE_CHAN, IGNORE_CHAN, IGNORE_CHAN, // Ch 5-8
+            IGNORE_CHAN, IGNORE_CHAN, IGNORE_CHAN, pwm,         // Ch 9-12 (Ch 12 gets the Keepalive)
+            IGNORE_CHAN, IGNORE_CHAN, IGNORE_CHAN, IGNORE_CHAN, // Ch 13-16
+            IGNORE_CHAN, IGNORE_CHAN                            // Ch 17-18 MAVLink v2 extensions, not used here - demands 18 channels total.
+        );
+
+        uint8_t buffer[MAVLINK_MAX_PACKET_LEN]{};
+        const uint16_t len = mavlink_msg_to_send_buffer(buffer, &msg);
+
+        // Send using the same thread-safe queue as the heartbeat
+        link->writeBytesThreadSafe(reinterpret_cast<const char*>(buffer), len);
     }
 }
