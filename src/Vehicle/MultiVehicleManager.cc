@@ -86,6 +86,14 @@ void MultiVehicleManager::init()
     (void) connect(_gcsHeartbeatTimer, &QTimer::timeout, this, &MultiVehicleManager::_sendGCSHeartbeat);
     _gcsHeartbeatTimer->start();
 
+    // --- PATCH: Step D4 - Start the RC Override Keepalive timer ---
+    _gcsRcKeepaliveTimer = new QTimer(this);
+    _gcsRcKeepaliveTimer->setInterval(kGCSRcKeepaliveRateMSecs);
+    _gcsRcKeepaliveTimer->setSingleShot(false);
+    connect(_gcsRcKeepaliveTimer, &QTimer::timeout, this, &MultiVehicleManager::_sendGCSRcOverrideKeepalive);
+    _gcsRcKeepaliveTimer->start();
+    // --------------------------------------------------------------
+
     _initialized = true;
 }
 
@@ -347,6 +355,59 @@ void MultiVehicleManager::_sendGCSHeartbeat()
         (void) link->writeBytesThreadSafe(reinterpret_cast<const char*>(buffer), len);
     }
 }
+
+// --- PATCH: Step D5 - Implement _sendGCSRcOverrideKeepalive() ---
+void MultiVehicleManager::_sendGCSRcOverrideKeepalive()
+{
+    if (!SettingsManager::instance()->mavlinkSettings()->sendGCSHeartbeat()->rawValue().toBool()) {
+        return;
+    }
+
+    Vehicle* v = activeVehicle();
+    if (!v) {
+        return;
+    }
+
+    // flip-flop pwm
+    const uint16_t pwm = _rcKeepaliveFlip ? 1900 : 1100;
+    _rcKeepaliveFlip = !_rcKeepaliveFlip;
+
+    constexpr uint16_t IGNORE = UINT16_MAX; // 65535 (ignore this channel) - ArduPilot supports this semantics
+
+    const auto links = LinkManager::instance()->links();
+    for (const SharedLinkInterfacePtr& link : links) {
+        if (!link->isConnected()) {
+            continue;
+        }
+
+        const auto linkConfig = link->linkConfiguration();
+        if (linkConfig && linkConfig->isHighLatency()) {
+            continue;
+        }
+
+        mavlink_message_t msg{};
+
+        // IMPORTANT: only chan16 gets a value; everything else is ignored.
+        mavlink_msg_rc_channels_override_pack_chan(
+            MAVLinkProtocol::instance()->getSystemId(),
+            MAVLinkProtocol::instance()->getComponentId(),
+            link->mavlinkChannel(),
+            &msg,
+            static_cast<uint8_t>(v->id()),  // target_system (vehicle sysid)
+            0,                                // target_component
+            IGNORE, IGNORE, IGNORE, IGNORE, IGNORE, IGNORE, IGNORE, IGNORE,
+            IGNORE, IGNORE, IGNORE, IGNORE, IGNORE, IGNORE, IGNORE,
+            pwm,                               // chan16_raw
+            IGNORE, IGNORE
+        );
+
+        uint8_t buffer[MAVLINK_MAX_PACKET_LEN]{};
+        const uint16_t len = mavlink_msg_to_send_buffer(buffer, &msg);
+
+        link->writeBytesThreadSafe(reinterpret_cast<const char*>(buffer), len);
+    }
+}
+// ----------------------------------------------------------------
 
 void MultiVehicleManager::selectVehicle(int vehicleId)
 {
