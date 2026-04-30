@@ -415,6 +415,9 @@ public:
 
     Q_INVOKABLE void sendSetupSigning();
 
+    /// Send RC override for specified channel. pwm of -1 will remove override for that channel.
+    Q_INVOKABLE void sendRCOverride(int channel, int pwm);
+
     bool    isInitialConnectComplete() const;
     bool    guidedModeSupported     () const;
     bool    pauseVehicleSupported   () const;

@@ -366,4 +366,12 @@ private:
     static constexpr const char *_buttonActionLandingGearRetract=  QT_TR_NOOP("Landing gear retract");
     static constexpr const char *_buttonActionMotorInterlockEnable=   QT_TR_NOOP("Motor Interlock enable");
     static constexpr const char *_buttonActionMotorInterlockDisable=  QT_TR_NOOP("Motor Interlock disable");
+
+    // Custom Payload Actions here:
+    static constexpr const char *_buttonActionMainRigOpen  = QT_TR_NOOP("Main Rig: OPEN");
+    static constexpr const char *_buttonActionMainRigClose = QT_TR_NOOP("Main Rig: CLOSE");
+    static constexpr const char *_buttonActionDropBagOpen  = QT_TR_NOOP("Drop Bag: OPEN");
+    static constexpr const char *_buttonActionDropBagClose = QT_TR_NOOP("Drop Bag: CLOSE");
+    static constexpr const char *_buttonActionRemRigOpen   = QT_TR_NOOP("Remote Rig: OPEN");
+    static constexpr const char *_buttonActionRemRigClose  = QT_TR_NOOP("Remote Rig: CLOSE");
 };

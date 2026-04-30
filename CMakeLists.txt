@@ -570,6 +570,10 @@ if(LINUX)
     )
 endif()
 
+if(ANDROID AND QGC_ENABLE_GST_VIDEOSTREAMING)
+    target_link_libraries(QGroundControl PRIVATE jpeg png16 graphene-1.0 gstcontroller-1.0)
+endif()
+
 include(Install)
 
 include(PrintSummary)

@@ -1117,6 +1117,30 @@ void Joystick::_executeButtonAction(const QString &action, bool buttonDown)
         if (buttonDown) {
             emit motorInterlock(false);
         }
+    } else if (action == _buttonActionMainRigOpen) {
+        if (buttonDown) {
+            _activeVehicle->sendRCOverride(7, 1000);
+        }
+    } else if (action == _buttonActionMainRigClose) {
+        if (buttonDown) {
+            _activeVehicle->sendRCOverride(7, 2000);
+        }
+    } else if (action == _buttonActionDropBagOpen) {
+        if (buttonDown) {
+            _activeVehicle->sendRCOverride(6, 1000);
+        }
+    } else if (action == _buttonActionDropBagClose) {
+        if (buttonDown) {
+            _activeVehicle->sendRCOverride(6, 2000);
+        }
+    } else if (action == _buttonActionRemRigOpen) {
+        if (buttonDown) {
+            _activeVehicle->sendRCOverride(8, 1000);
+        }
+    } else if (action == _buttonActionRemRigClose) {
+        if (buttonDown) {
+            _activeVehicle->sendRCOverride(8, 2000);
+        }
     } else {
         if (buttonDown && _activeVehicle) {
             emit unknownAction(action);
@@ -1211,6 +1235,13 @@ void Joystick::_buildActionList(Vehicle *activeVehicle)
     _assignableButtonActions->append(new AssignableButtonAction(_buttonActionMotorInterlockEnable));
     _assignableButtonActions->append(new AssignableButtonAction(_buttonActionMotorInterlockDisable));
 #endif
+
+    _assignableButtonActions->append(new AssignableButtonAction(_buttonActionMainRigOpen));
+    _assignableButtonActions->append(new AssignableButtonAction(_buttonActionMainRigClose));
+    _assignableButtonActions->append(new AssignableButtonAction(_buttonActionDropBagOpen));
+    _assignableButtonActions->append(new AssignableButtonAction(_buttonActionDropBagClose));
+    _assignableButtonActions->append(new AssignableButtonAction(_buttonActionRemRigOpen));
+    _assignableButtonActions->append(new AssignableButtonAction(_buttonActionRemRigClose));
 
     const auto customActions = QGCCorePlugin::instance()->joystickActions();
     for (const auto &action : customActions) {

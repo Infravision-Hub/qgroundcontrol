@@ -4399,4 +4399,52 @@ MAVLinkLogManager *Vehicle::mavlinkLogManager() const
     return _mavlinkLogManager;
 }
 
+void Vehicle::sendRCOverride(int channel, int pwm)
+{
+    // 1. Safely lock the weak pointer into a shared pointer
+    auto primaryLinkWeak = vehicleLinkManager()->primaryLink();
+    auto primaryLink = primaryLinkWeak.lock();
+    
+    if (!primaryLink) {
+        qWarning() << "Vehicle::sendRCOverride - No primary link available";
+        return;
+    }
+
+    // MAVLink requires an array of 18 channels. 
+    // Setting them to UINT16_MAX (65535) tells ArduPilot to ignore the ones we aren't using.
+    uint16_t rcValues[18];
+    for (int i = 0; i < 18; i++) {
+        rcValues[i] = UINT16_MAX; 
+    }
+
+    // Assign the specific PWM value to the requested channel
+    if (channel >= 1 && channel <= 18) {
+        rcValues[channel - 1] = pwm;
+    }
+
+    // 2. Standard MAVLink GCS Identity (System 255, Component 190)
+    uint8_t gcsSysId = 255;
+    uint8_t gcsCompId = 190;
+
+    mavlink_message_t msg;
+    mavlink_msg_rc_channels_override_pack_chan(
+        gcsSysId,
+        gcsCompId,
+        primaryLink->mavlinkChannel(),  
+        &msg,
+        this->id(),                     // Target system (the drone)
+        0,                              // Target component (0 for all)
+        rcValues[0], rcValues[1], rcValues[2], rcValues[3], 
+        rcValues[4], rcValues[5], rcValues[6], rcValues[7],
+        rcValues[8], rcValues[9], rcValues[10], rcValues[11],
+        rcValues[12], rcValues[13], rcValues[14], rcValues[15],
+        rcValues[16], rcValues[17]
+    );
+
+    // 3. Send the packet safely
+    sendMessageOnLinkThreadSafe(primaryLink.get(), msg);
+    
+    qDebug() << "Sent Custom RC Override over MAVLink: Channel" << channel << "PWM:" << pwm;
+}
+
 /*---------------------------------------------------------------------------*/
