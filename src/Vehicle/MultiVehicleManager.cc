@@ -387,7 +387,7 @@ void MultiVehicleManager::_sendGCSRcOverrideKeepalive()
 
         mavlink_message_t msg{};
 
-        // IMPORTANT: only chan16 gets a value; everything else is ignored.
+        // IMPORTANT: only chan10 gets a value; everything else is ignored.
         mavlink_msg_rc_channels_override_pack_chan(
             MAVLinkProtocol::instance()->getSystemId(),
             MAVLinkProtocol::instance()->getComponentId(),
@@ -396,8 +396,8 @@ void MultiVehicleManager::_sendGCSRcOverrideKeepalive()
             static_cast<uint8_t>(v->id()),  // target_system (vehicle sysid)
             0,                                // target_component
             IGNORE, IGNORE, IGNORE, IGNORE, IGNORE, IGNORE, IGNORE, IGNORE,
-            IGNORE, IGNORE, IGNORE, IGNORE, IGNORE, IGNORE, IGNORE,
-            pwm,                               // chan16_raw
+            IGNORE, pwm, IGNORE, IGNORE, IGNORE, IGNORE, IGNORE,
+            IGNORE,                               
             IGNORE, IGNORE
         );
 
