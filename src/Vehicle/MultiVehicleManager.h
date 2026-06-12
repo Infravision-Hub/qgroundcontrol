@@ -42,6 +42,8 @@ public:
     static MultiVehicleManager *instance();
     static void registerQmlTypes();
 
+    void setPauseFlopper(bool pause) { _pauseFlopper = pause; }
+
     void init();
     Q_INVOKABLE Vehicle *getVehicleById(int vehicleId) const;
     Q_INVOKABLE void      selectVehicle(int vehicleId);
@@ -91,6 +93,8 @@ private:
     QList<int> _ignoreVehicleIds;                   ///< List of vehicle id for which we ignore further communication
     bool _initialized = false;
 
+    // Keepalive logic for CH10 flopper for RC calibration and failsafe.
     static constexpr int kGCSHeartbeatRateMSecs = 1000;  ///< Heartbeat rate
     static constexpr int kGCSRcKeepaliveRateMSecs = 500; ///< Added: 500ms Keepalive rate
+    bool _pauseFlopper = false;
 };

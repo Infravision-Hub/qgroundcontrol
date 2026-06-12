@@ -13,6 +13,7 @@
 #include "QGCApplication.h"
 #include "QGCLoggingCategory.h"
 #include "Vehicle.h"
+#include "MultiVehicleManager.h"
 
 #include <QtCore/QSettings>
 
@@ -764,6 +765,9 @@ void RadioComponentController::_startCalibration()
         return;
     }
 
+    // Pause the CH10 flopper so the baseline check can pass
+    MultiVehicleManager::instance()->setPauseFlopper(true);
+
     _resetInternalCalibrationValues();
 
     // Let the mav known we are starting calibration. This should turn off motors and so forth.
@@ -778,6 +782,10 @@ void RadioComponentController::_startCalibration()
 
 void RadioComponentController::_stopCalibration()
 {
+    // --- MODIFICATION: Resume the CH10 flopper now that calibration is done or canceled ---
+    MultiVehicleManager::instance()->setPauseFlopper(false);
+    // ------------------------------------------------------------------------------------
+
     _currentStep = -1;
 
     if (_vehicle) {

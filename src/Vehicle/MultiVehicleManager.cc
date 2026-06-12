@@ -368,9 +368,16 @@ void MultiVehicleManager::_sendGCSRcOverrideKeepalive()
         return;
     }
 
-    // flip-flop pwm
-    const uint16_t pwm = _rcKeepaliveFlip ? 1900 : 1100;
-    _rcKeepaliveFlip = !_rcKeepaliveFlip;
+    // Setting the flopper to pause so calibration mode can be entered without interference.
+    uint16_t pwm;
+    if (_pauseFlopper) {
+        // Flatline the channel at 1500us so calibration wizard passes
+        pwm = 1500;
+    } else {
+        // Normal flip-flop pwm
+        pwm = _rcKeepaliveFlip ? 1900 : 1100;
+        _rcKeepaliveFlip = !_rcKeepaliveFlip;
+    }
 
     constexpr uint16_t IGNORE = UINT16_MAX; // 65535 (ignore this channel) - ArduPilot supports this semantics
 
