@@ -1116,7 +1116,7 @@ void Joystick::_executeButtonAction(const QString &action, bool buttonDown)
     } else if (action == _buttonActionMotorInterlockDisable) {
         if (buttonDown) {
             emit motorInterlock(false);
-        }
+        }   
     } else if (action == _buttonActionMainRigOpen) {
         if (buttonDown) {
             _activeVehicle->sendRCOverride(7, 1000);

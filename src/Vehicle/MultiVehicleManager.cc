@@ -380,6 +380,7 @@ void MultiVehicleManager::_sendGCSRcOverrideKeepalive()
     }
 
     constexpr uint16_t IGNORE = UINT16_MAX; // 65535 (ignore this channel) - ArduPilot supports this semantics
+    constexpr uint16_t CENTER = 1500; // Center PWM value for channels we want to keep at neutral
 
     const auto links = LinkManager::instance()->links();
     for (const SharedLinkInterfacePtr& link : links) {
@@ -403,9 +404,16 @@ void MultiVehicleManager::_sendGCSRcOverrideKeepalive()
             static_cast<uint8_t>(v->id()),  // target_system (vehicle sysid)
             0,                                // target_component
             IGNORE, IGNORE, IGNORE, IGNORE, IGNORE, IGNORE, IGNORE, IGNORE,
-            IGNORE, pwm, IGNORE, IGNORE, IGNORE, IGNORE, IGNORE,
-            IGNORE,                               
-            IGNORE, IGNORE
+            CENTER, 
+            pwm, 
+            CENTER, 
+            CENTER, 
+            CENTER, 
+            CENTER, 
+            CENTER,
+            CENTER,                               
+            IGNORE, 
+            IGNORE
         );
 
         uint8_t buffer[MAVLINK_MAX_PACKET_LEN]{};
